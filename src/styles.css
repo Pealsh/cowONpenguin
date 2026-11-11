@@ -14,3 +14,9 @@ body {
   background: var(--bg);
   color: var(--fg);
 }
+
+canvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+}
