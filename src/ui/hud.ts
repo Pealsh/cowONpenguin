@@ -9,6 +9,7 @@ export type Hud = {
   setMode(m: 0 | 1): void;
   setFlat(open: boolean): void;
   hideSceneControls(): void;
+  hideFlatToggle(): void;
 };
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -18,7 +19,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 export function createHud(root: HTMLElement, name: string, handlers: HudHandlers): Hud {
-  const nameEl = document.createElement('h1');
+  const nameEl = document.createElement('p');
   nameEl.className = 'name';
   nameEl.textContent = name;
 
@@ -66,6 +67,9 @@ export function createHud(root: HTMLElement, name: string, handlers: HudHandlers
     hideSceneControls() {
       asciiBtn.hidden = true;
       modeBtn.hidden = true;
+    },
+    hideFlatToggle() {
+      flatBtn.hidden = true;
     },
   };
   return hud;
