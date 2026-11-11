@@ -3,7 +3,12 @@ import type { BiomeId } from '../../content/sections';
 import type { SectionRange } from '../../scroll/path';
 import { worldX } from '../../scroll/path';
 import type { PropHandles } from '../props';
+import { createDesert } from './desert';
+import { createForest } from './forest';
 import { nearSpan } from './logic';
+import { createMeadow } from './meadow';
+import { createSnow } from './snow';
+import { createVolcano } from './volcano';
 
 export type GimmickCtx = { time: number; dt: number; riderX: number; reduced: boolean; mobile: boolean };
 export type Gimmick = { update(ctx: GimmickCtx): void };
@@ -16,7 +21,13 @@ export type Span = { x0: number; x1: number };
 export type BiomeGimmick = Gimmick & { setVisible(visible: boolean): void; shake?(): number };
 export type GimmickFactory = (scene: Scene, span: Span, props: PropHandles) => BiomeGimmick;
 
-const FACTORIES: Partial<Record<BiomeId, GimmickFactory>> = {};
+const FACTORIES: Record<BiomeId, GimmickFactory> = {
+  meadow: createMeadow,
+  forest: createForest,
+  snow: createSnow,
+  desert: createDesert,
+  volcano: createVolcano,
+};
 
 type Slot = { span: Span; g: BiomeGimmick; active: boolean };
 
@@ -24,7 +35,6 @@ export function createGimmicks(scene: Scene, ranges: readonly SectionRange[], pr
   const slots: Slot[] = [];
   for (const r of ranges) {
     const factory = FACTORIES[r.biome];
-    if (!factory) continue;
     const span = { x0: worldX(r.start), x1: worldX(r.end) };
     const g = factory(scene, span, props);
     g.setVisible(false);
