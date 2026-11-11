@@ -1,7 +1,7 @@
 import { Clock } from 'three';
 import { createAsciiPass } from './scene/ascii';
 import { BIOME_LOOKS, blendLook, createLookBuffer } from './scene/biomes';
-import { updateCamera } from './scene/camera';
+import { isMobileLayout, updateCamera } from './scene/camera';
 import { createRider } from './scene/creatures/rider';
 import { createGround } from './scene/ground';
 import { createProps } from './scene/props';
@@ -30,9 +30,12 @@ function start(): void {
   const flat = createFlat(flatRoot);
 
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let mobile = innerWidth < 720;
+  // 性能設定（地面の頂点数・ASCII セル）は起動時の幅だけで決める
+  const smallScreen = innerWidth < 720;
+  // カメラ配置は縦長も含めて判定し、リサイズで切り替える
+  let mobile = isMobileLayout(innerWidth, innerHeight);
   addEventListener('resize', () => {
-    mobile = innerWidth < 720;
+    mobile = isMobileLayout(innerWidth, innerHeight);
   });
 
   function toggleFlatWith(hud: Hud, onOpen?: () => void, onClose?: () => void): void {
@@ -56,6 +59,7 @@ function start(): void {
       onToggleFlat: () => toggleFlatWith(hud),
     });
     hud.hideSceneControls();
+    hud.hideFlatToggle(); // フラット表示しかないので戻る先がない
     flat.open();
     hud.setFlat(true);
     return;
@@ -64,7 +68,7 @@ function start(): void {
   const look = BIOME_LOOKS.meadow;
   const lookBuf = createLookBuffer();
 
-  const ground = createGround(scene, mobile ? 40000 : 110000);
+  const ground = createGround(scene, smallScreen ? 40000 : 110000);
   ground.applyLook(look);
   const stars = createStars(scene);
   const props = createProps(scene, ranges);
@@ -73,7 +77,7 @@ function start(): void {
   rider.setMode(initialMode);
   scene.add(rider.group);
   const ascii = createAsciiPass(renderer, dpr);
-  ascii.setCell(mobile ? 9 * dpr : 7 * dpr, mobile ? 14 * dpr : 11 * dpr);
+  ascii.setCell(smallScreen ? 9 * dpr : 7 * dpr, smallScreen ? 14 * dpr : 11 * dpr);
 
   const resize = (): void => {
     stage.resize();
@@ -101,6 +105,7 @@ function start(): void {
   const clock = new Clock();
   let smoothed = 0;
   let prevX = 0;
+  let first = true;
   let gait = 0;
   let running = false;
   let rafId = 0;
@@ -110,6 +115,13 @@ function start(): void {
     const t = clock.elapsedTime;
 
     const target = progressFromScroll(scrollY, document.documentElement.scrollHeight, innerHeight);
+    const snap = first;
+    if (first) {
+      // スクロール位置の復元で途中から始まっても、最初のフレームはその位置に置く
+      smoothed = target;
+      prevX = worldX(target);
+      first = false;
+    }
     smoothed = reduced ? target : smoothProgress(smoothed, target, dt);
     const x = worldX(smoothed);
     const dx = x - prevX;
@@ -130,7 +142,7 @@ function start(): void {
     ground.update(t, x);
     stars.update(t, blended);
     props.update(t);
-    updateCamera(camera, x, dt, mobile);
+    updateCamera(camera, x, snap ? 1 : dt, mobile); // 初回はカメラも追従先へ即座に置く
     prevX = x;
 
     if (asciiOn) ascii.render(scene, camera);
