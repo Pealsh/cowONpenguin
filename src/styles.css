@@ -1,0 +1,16 @@
+:root {
+  --fg: #d8e6d0;
+  --dim: #7f9378;
+  --bg: #050806;
+  --accent: #f2f5e8;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+}
