@@ -19,9 +19,10 @@ describe('layoutProps', () => {
     }
   });
 
-  it('keeps the walking lane clear (|z| >= 6 for every prop)', () => {
-    for (const p of placements) {
-      expect(Math.abs(p.z)).toBeGreaterThanOrEqual(6);
+  it('keeps every non-wave prop behind the walking lane, in view (z in [-28, -6])', () => {
+    for (const p of placements.filter(q => q.kind !== 'wave')) {
+      expect(p.z).toBeGreaterThanOrEqual(-28);
+      expect(p.z).toBeLessThanOrEqual(-6);
     }
   });
 
@@ -35,9 +36,9 @@ describe('layoutProps', () => {
     expect(countByKind('wave')).toBe(2);
   });
 
-  it('shore waves sit at z = 14 and z = 20', () => {
+  it('shore waves sit on the far side at z = -13 and z = -8', () => {
     const waveZs = placements.filter(p => p.kind === 'wave').map(p => p.z).sort((a, b) => a - b);
-    expect(waveZs).toEqual([14, 20]);
+    expect(waveZs).toEqual([-13, -8]);
   });
 
   it('is deterministic for a fixed seed', () => {

@@ -26,9 +26,12 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
-// 歩行路 |z| < 5 を避け、カメラ手前（z 6〜10）も避けて左右どちらかの帯に置く
+// カメラは z≈7.5〜9 から 45° 見下ろすため、地面が画面に入るのはデスクトップで z≈-15〜4 だけ。
+// 歩行路（z≈0）の奥 z∈[-15,-6] に置く（手前はカメラの背後で描かれず、奥すぎると画面上端の外）
+export const PROP_Z_NEAR = -6;
+export const PROP_Z_FAR = -15;
 function randomZ(rng: () => number): number {
-  return rng() < 0.5 ? -28 + rng() * 22 : 10 + rng() * 18;
+  return PROP_Z_FAR + rng() * (PROP_Z_NEAR - PROP_Z_FAR);
 }
 
 function scatter(
@@ -69,8 +72,9 @@ export function layoutProps(ranges: readonly SectionRange[], seed: number = PROP
         const x1 = worldX(range.end);
         const cx = (x0 + x1) / 2;
         const width = x1 - x0;
-        out.push({ biome: range.biome, kind: 'wave', x: cx, z: 14, width });
-        out.push({ biome: range.biome, kind: 'wave', x: cx, z: 20, width });
+        // 海は奥側（カメラから見て歩行路の向こう）
+        out.push({ biome: range.biome, kind: 'wave', x: cx, z: -8, width });
+        out.push({ biome: range.biome, kind: 'wave', x: cx, z: -13, width });
         break;
       }
     }
