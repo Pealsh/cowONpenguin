@@ -27,7 +27,7 @@ const PREWARM_SECONDS = 2;
 // (biome, 何個目) ごとに seed を変えて、カード毎に違う絵にする
 const attachCount: Partial<Record<BiomeId, number>> = {};
 
-type Layer = { canvas: HTMLCanvasElement; rebuild(cols: number): void };
+type Layer = { canvas: HTMLCanvasElement; rebuild(cols: number): void; unregister(): void };
 
 function createLayer(box: HTMLElement, className: string, rows: number, seed: number, factory: Factory): Layer {
   const canvas = document.createElement('canvas');
@@ -47,10 +47,11 @@ function createLayer(box: HTMLElement, className: string, rows: number, seed: nu
     renderer.draw(grid);
   };
 
-  if (!reduced) register(canvas, { step: (dt) => scene.step(dt), draw });
+  const unregister = reduced ? (): void => {} : register(canvas, { step: (dt) => scene.step(dt), draw });
 
   return {
     canvas,
+    unregister,
     rebuild(nextCols: number): void {
       if (nextCols === cols) return;
       cols = nextCols;
@@ -64,6 +65,9 @@ function createLayer(box: HTMLElement, className: string, rows: number, seed: nu
     },
   };
 }
+
+/** desert corner を描くのに十分な横幅 (列数) */
+const MIN_CORNER_COLS = 14;
 
 export function attachDecor(box: HTMLElement, biome: BiomeId): void {
   const cfg = DECOR[biome];
@@ -82,31 +86,58 @@ export function attachDecor(box: HTMLElement, biome: BiomeId): void {
   else box.style.paddingBottom = 'calc(var(--decor-rows) * 1.1em + 12px)';
 
   const corner = cfg.corner;
+  let cornerLayer: Layer | null = null;
   if (corner) {
-    const layer = createLayer(box, 'decor decor-corner', corner.rows, seed ^ 0x9e3779b9, (c, r, s) =>
+    cornerLayer = createLayer(box, 'decor decor-corner', corner.rows, seed ^ 0x9e3779b9, (c, r, s) =>
       createDesertCorner(c, r, s, corner.palette),
     );
-    layer.canvas.style.top = '0';
-    layer.canvas.style.right = '0';
-    layer.rebuild(corner.cols);
-    // 右上に乗る corner はメインの edge とは別に上側の余白を確保する
-    // (メインが top edge の場合は両方を足し合わせて重ならないようにする)
-    box.style.paddingTop =
-      cfg.edge === 'top'
-        ? `calc(var(--decor-rows) * 1.1em + 12px + ${corner.rows} * 1.1em + 8px)`
-        : `calc(${corner.rows} * 1.1em + 8px)`;
+    cornerLayer.canvas.style.top = '0';
+    cornerLayer.canvas.style.right = '0';
   }
 
+  // 幅が足りない (MIN_CORNER_COLS 未満) 時は corner canvas を描かず隠す
+  const setCornerVisible = (visible: boolean): void => {
+    if (!cornerLayer) return;
+    cornerLayer.canvas.style.display = visible ? 'block' : 'none';
+    box.style.paddingTop = !corner
+      ? box.style.paddingTop
+      : visible
+        ? cfg.edge === 'top'
+          ? `calc(var(--decor-rows) * 1.1em + 12px + ${corner.rows} * 1.1em + 8px)`
+          : `calc(${corner.rows} * 1.1em + 8px)`
+        : cfg.edge === 'top'
+          ? 'calc(var(--decor-rows) * 1.1em + 12px)'
+          : '0px';
+  };
+
+  const cleanup = (): void => {
+    main.unregister();
+    cornerLayer?.unregister();
+    ro?.disconnect();
+    removeEventListener('resize', update);
+  };
+
   const update = (): void => {
+    if (!box.isConnected) {
+      cleanup();
+      return;
+    }
     const cols = Math.max(0, Math.floor(box.clientWidth / measureCharWidth()));
     main.rebuild(cols);
+    if (corner && cornerLayer) {
+      const fits = cols >= MIN_CORNER_COLS;
+      setCornerVisible(fits);
+      if (fits) cornerLayer.rebuild(corner.cols);
+    }
   };
-  update();
 
+  let ro: ResizeObserver | null = null;
   if (typeof ResizeObserver !== 'undefined') {
-    const ro = new ResizeObserver(() => update());
+    ro = new ResizeObserver(() => update());
     ro.observe(box);
   } else {
     addEventListener('resize', update);
   }
+
+  update();
 }

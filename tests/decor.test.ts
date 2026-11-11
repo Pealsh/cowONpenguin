@@ -38,7 +38,7 @@ describe('DECOR config', () => {
   });
 
   it('volcano drip palette contains the glowing lava colours', () => {
-    for (const c of ['#ffe08a', '#ffb03a', '#ff6a1a', '#c2300c']) {
+    for (const c of ['#bc8a00', '#d27d00', '#fd5800', '#c2300c']) {
       expect(DECOR.volcano.palette).toContain(c);
     }
   });
@@ -51,5 +51,39 @@ describe('DECOR config', () => {
     expect(corner.rows).toBeLessThanOrEqual(4);
     expect(corner.cols).toBeGreaterThan(4);
     for (const c of corner.palette) expect(c).toMatch(HEX);
+  });
+});
+
+function luminance(hex: string): number {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * (ch[0] ?? 0) + 0.7152 * (ch[1] ?? 0) + 0.0722 * (ch[2] ?? 0);
+}
+function contrastOnWhite(hex: string): number {
+  return 1.05 / (luminance(hex) + 0.05);
+}
+
+describe('DECOR contrast on white panels', () => {
+  it('every palette / accent / corner colour is >= 3:1 against #ffffff (faint colours excluded)', () => {
+    for (const id of BIOME_IDS) {
+      const d = DECOR[id];
+      const colours = [...d.palette, ...(d.accents ?? []), ...(d.corner?.palette ?? [])];
+      for (const c of colours) {
+        expect(contrastOnWhite(c), `${id} ${c}`).toBeGreaterThanOrEqual(3);
+      }
+      for (const c of d.faint ?? []) expect(c).toMatch(HEX);
+    }
+  });
+
+  it('palettes stay ordered light -> dark', () => {
+    for (const id of BIOME_IDS) {
+      const p = DECOR[id].palette;
+      for (let i = 1; i < p.length; i++) {
+        expect(luminance(p[i] ?? '#000000')).toBeLessThanOrEqual(luminance(p[i - 1] ?? '#ffffff'));
+      }
+    }
   });
 });

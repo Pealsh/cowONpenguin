@@ -17,12 +17,18 @@ type Drip = {
 type Ember = { x: number; y: number; vy: number; ph: number; alive: boolean };
 type Bubble = { x: number; age: number }; // age<0 なら非活性
 
-export function createVolcano(cols: number, rows: number, seed: number, palette = DECOR.volcano.palette, accents = DECOR.volcano.accents ?? []): Scene {
+export function createVolcano(
+  cols: number,
+  rows: number,
+  seed: number,
+  palette = DECOR.volcano.palette,
+  faint = DECOR.volcano.faint ?? [],
+): Scene {
   const rnd = mulberry32(seed);
   const lava = palette.slice(0, 4); // 明→暗の溶岩色
   const crustA = palette[4] ?? '#6b1a0a';
   const crustB = palette[5] ?? '#2a0d08';
-  const smokeColor = accents[0] ?? '#8a7f7a';
+  const smokeColor = faint[0] ?? '#8a7f7a';
   const lavaAt = (v: number): string => lava[Math.max(0, Math.min(lava.length - 1, Math.round(v * (lava.length - 1))))] ?? '#ff6a1a';
 
   const crustCh: string[] = [];

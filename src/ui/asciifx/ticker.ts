@@ -61,7 +61,15 @@ function ensureListeners(): void {
     io = new IntersectionObserver((records) => {
       for (const r of records) {
         const e = entries.find((x) => x.el === r.target);
-        if (e) e.visible = r.isIntersecting;
+        if (!e) continue;
+        if (!r.target.isConnected) {
+          // DOM から外れた decor は見えないまま回り続けさせず、ここで自分を登録解除する
+          const i = entries.indexOf(e);
+          if (i >= 0) entries.splice(i, 1);
+          io?.unobserve(r.target);
+          continue;
+        }
+        e.visible = r.isIntersecting;
       }
     });
   }
