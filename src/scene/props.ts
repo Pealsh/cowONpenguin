@@ -1,5 +1,6 @@
 import {
   BoxGeometry,
+  Color,
   ConeGeometry,
   CylinderGeometry,
   Group,
@@ -10,11 +11,23 @@ import {
   PlaneGeometry,
   Scene,
   SphereGeometry,
+  Vector3,
 } from 'three';
 import type { SectionRange } from '../scroll/path';
 import { layoutProps, mulberry32, type LayoutOptions } from './propsLayout';
 
-export type Props = { update(time: number): void };
+export type CraterHandle = { position: Vector3; material: MeshBasicMaterial; baseColor: Color };
+
+// ギミック（src/scene/gimmicks）が触る小物への参照
+export type PropHandles = {
+  meadowTrees: Vector3[]; // 草原の木の根元（ワールド座標）
+  meadowTufts: Group[]; // 草原の前景の草むら（揺らす）
+  forestTreeTops: Vector3[]; // 森の木のてっぺん（鳥がとまる）
+  snowmanHeads: Group[]; // 雪だるまの頭（y 回転でライダーを向く）
+  craters: CraterHandle[]; // 火口のキャップ（噴火で明るくする、マテリアルは火口ごと）
+};
+
+export type Props = { update(time: number): void; handles: PropHandles };
 
 // legacy/index.html の木（Box 幹 + Icosahedron 葉、0x2b241c / 0x3f6b3a）を各バイオームの小物に流用する
 export function createProps(scene: Scene, ranges: readonly SectionRange[], opts: LayoutOptions = {}): Props {
@@ -65,6 +78,8 @@ export function createProps(scene: Scene, ranges: readonly SectionRange[], opts:
   const volcanoPebbleMat = new MeshLambertMaterial({ color: 0x6a5048 });
   const snowLumpGeo = new SphereGeometry(0.5, 10, 8);
 
+  const handles: PropHandles = { meadowTrees: [], meadowTufts: [], forestTreeTops: [], snowmanHeads: [], craters: [] };
+
   for (const p of placements) {
     const group = new Group();
     group.position.set(p.x, 0, p.z);
@@ -85,6 +100,8 @@ export function createProps(scene: Scene, ranges: readonly SectionRange[], opts:
           leaf.scale.setScalar(0.7 + jitter() * 0.3);
           group.add(leaf);
         }
+        if (isForest) handles.forestTreeTops.push(new Vector3(p.x, (trunkH + 2.4) * p.scale, p.z));
+        else handles.meadowTrees.push(new Vector3(p.x, 0, p.z));
         break;
       }
       case 'snowman': {
@@ -92,14 +109,17 @@ export function createProps(scene: Scene, ranges: readonly SectionRange[], opts:
         big.position.y = 0.6;
         const mid = new Mesh(snowMidGeo, snowMat);
         mid.position.y = 0.6 + 0.6 + 0.45;
+        // 頭（球 + 目）は 1 つの Group にまとめ、y 回転でライダーの方を向けられるようにする
+        const head = new Group();
+        head.position.y = mid.position.y + 0.45 + 0.3;
         const small = new Mesh(snowSmallGeo, snowMat);
-        small.position.y = mid.position.y + 0.45 + 0.3;
-        group.add(big, mid, small);
         const eyeL = new Mesh(dotGeo, dotMat);
-        eyeL.position.set(-0.1, small.position.y + 0.02, 0.27);
+        eyeL.position.set(-0.1, 0.02, 0.27);
         const eyeR = new Mesh(dotGeo, dotMat);
-        eyeR.position.set(0.1, small.position.y + 0.02, 0.27);
-        group.add(eyeL, eyeR);
+        eyeR.position.set(0.1, 0.02, 0.27);
+        head.add(small, eyeL, eyeR);
+        group.add(big, mid, head);
+        handles.snowmanHeads.push(head);
         break;
       }
       case 'pine': {
@@ -129,9 +149,11 @@ export function createProps(scene: Scene, ranges: readonly SectionRange[], opts:
       case 'cone': {
         const mountain = new Mesh(volcanoGeo, volcanoMat);
         mountain.position.y = 4;
-        const crater = new Mesh(craterGeo, craterMat);
+        const material = craterMat.clone(); // 2 つの火口は別々のタイミングで光るので個別に持つ
+        const crater = new Mesh(craterGeo, material);
         crater.position.y = 8.6;
         group.add(mountain, crater);
+        handles.craters.push({ position: new Vector3(p.x, 8.6 * p.scale, p.z), material, baseColor: craterMat.color.clone() });
         break;
       }
       case 'lavaCrack': {
@@ -152,6 +174,7 @@ export function createProps(scene: Scene, ranges: readonly SectionRange[], opts:
           blade.rotation.set(Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35);
           group.add(blade);
         }
+        if (p.biome === 'meadow') handles.meadowTufts.push(group);
         break;
       }
       case 'pebble': {
@@ -175,6 +198,7 @@ export function createProps(scene: Scene, ranges: readonly SectionRange[], opts:
   }
 
   return {
+    handles,
     update(time) {
       // 1 マテリアルだけ色の明るさを脈動させる（溶岩が火照るように見せる、個別メッシュの更新はしない）
       const pulse = 0.8 + 0.2 * Math.sin(time * 2);

@@ -3,6 +3,7 @@ import { createAsciiPass } from './scene/ascii';
 import { BIOME_LOOKS, blendLook, createLookBuffer } from './scene/biomes';
 import { isMobileLayout, updateCamera } from './scene/camera';
 import { createRider } from './scene/creatures/rider';
+import { createGimmicks, type GimmickCtx } from './scene/gimmicks';
 import { createGround } from './scene/ground';
 import { createProps } from './scene/props';
 import { createStage } from './scene/renderer';
@@ -73,6 +74,11 @@ function start(): void {
   const stars = createStars(scene);
   // モバイルは見える地面が z≈-6 までなので、背景小物の奥行きを起動時に詰める
   const props = createProps(scene, ranges, mobile ? { zFar: -6 } : {});
+  const gimmicks = createGimmicks(scene, ranges, props.handles);
+  const gimmickCtx: GimmickCtx = { time: 0, dt: 0, riderX: 0, reduced, mobile };
+  // 前フレームに足したカメラの揺れ（積み重ならないよう、追従計算の前に取り除く）
+  let shakeX = 0;
+  let shakeY = 0;
   const rider = createRider();
   const initialMode = location.search.includes('p1') ? 1 : 0;
   rider.setMode(initialMode);
@@ -150,7 +156,19 @@ function start(): void {
     ground.update(t, x);
     stars.update(t, blended);
     props.update(t);
+    camera.position.x -= shakeX;
+    camera.position.y -= shakeY;
     updateCamera(camera, x, snap ? 1 : dt, mobile); // 初回はカメラも追従先へ即座に置く
+    gimmickCtx.time = t;
+    gimmickCtx.dt = dt;
+    gimmickCtx.riderX = x;
+    gimmickCtx.mobile = mobile;
+    gimmicks.update(gimmickCtx);
+    const amp = gimmicks.shake();
+    shakeX = amp > 0 ? (Math.random() * 2 - 1) * amp : 0;
+    shakeY = amp > 0 ? (Math.random() * 2 - 1) * amp : 0;
+    camera.position.x += shakeX;
+    camera.position.y += shakeY;
     prevX = x;
 
     if (asciiOn) ascii.render(scene, camera);
