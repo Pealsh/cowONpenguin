@@ -1,6 +1,7 @@
 import type { SectionDef } from '../content/sections';
 import { PROFILE } from '../content/profile';
 import { SKILLS } from '../content/skills';
+import { attachDecor } from './decor';
 
 function copyBlock(...children: HTMLElement[]): HTMLDivElement {
   const div = document.createElement('div');
@@ -112,6 +113,8 @@ export function renderSections(
         section.appendChild(buildContact());
         break;
     }
+    const copyEl = section.querySelector('.copy');
+    if (copyEl instanceof HTMLElement) attachDecor(copyEl, def.biome);
     main.appendChild(section);
   }
   if (!worksContainer) throw new Error('sections: works section missing');

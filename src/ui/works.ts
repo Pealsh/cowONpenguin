@@ -1,4 +1,5 @@
 import type { Work } from '../content/works';
+import { attachDecor } from './decor';
 
 const NOISE_CHARS = ' .:-=+*';
 
@@ -68,6 +69,7 @@ function buildCard(work: Work): HTMLElement {
   article.className = 'card';
   article.id = `work-${work.id}`;
 
+  attachDecor(article, 'snow');
   article.appendChild(buildFigure(work));
 
   const title = document.createElement('h3');
