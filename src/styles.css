@@ -29,7 +29,48 @@ main {
 
 #hud {
   position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 2;
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+#hud .name {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+}
+
+#hud .buttons {
+  pointer-events: auto;
+  display: flex;
+  gap: 8px;
+}
+
+#hud button {
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid var(--dim);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#hud button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+#hud button[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 #flat {

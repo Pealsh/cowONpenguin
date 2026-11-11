@@ -38,7 +38,11 @@ export function createHud(root: HTMLElement, name: string, handlers: HudHandlers
   modeBtn.addEventListener('click', () => handlers.onToggleMode());
   flatBtn.addEventListener('click', () => handlers.onToggleFlat());
 
-  root.append(nameEl, asciiBtn, modeBtn, flatBtn);
+  const buttons = document.createElement('div');
+  buttons.className = 'buttons';
+  buttons.append(asciiBtn, modeBtn, flatBtn);
+
+  root.append(nameEl, buttons);
 
   addEventListener('keydown', (e) => {
     if (e.repeat) return;
