@@ -186,7 +186,7 @@ button:focus-visible {
   transition: opacity 0.4s, transform 0.4s;
 }
 
-/* decor <pre> は box の padding 内に収め、横スクロールの原因にならないようにする */
+/* decor canvas は box の padding 内に収め、横スクロールの原因にならないようにする */
 .decor {
   overflow: hidden;
   max-width: 100%;

@@ -1,75 +1,106 @@
 import type { BiomeId } from '../content/sections';
-import { DECOR, decorRows, type Decor } from '../content/decor';
+import { DECOR } from '../content/decor';
+import { CharGrid } from './asciifx/grid';
+import { createGridRenderer, measureCharWidth } from './asciifx/render';
+import { DT, prefersReducedMotion, register } from './asciifx/ticker';
+import { seedFor } from './asciifx/rng';
+import type { Scene } from './asciifx/scenes/types';
+import { createSnow } from './asciifx/scenes/snow';
+import { createMeadow } from './asciifx/scenes/meadow';
+import { createForest } from './asciifx/scenes/forest';
+import { createDesert, createDesertCorner } from './asciifx/scenes/desert';
+import { createVolcano } from './asciifx/scenes/volcano';
 
-const CHAR_SIZE_CSS = 'font-size: 11px; line-height: 1.1; font-family: ui-monospace, "SF Mono", Menlo, monospace;';
+type Factory = (cols: number, rows: number, seed: number) => Scene;
 
-// すべての decor は同じフォント設定を使うので、1 文字幅は一度測れば十分
-let cachedCharWidth: number | null = null;
+const FACTORIES: Record<BiomeId, Factory> = {
+  snow: createSnow,
+  meadow: createMeadow,
+  forest: createForest,
+  desert: createDesert,
+  volcano: createVolcano,
+};
 
-function measureCharWidth(): number {
-  if (cachedCharWidth !== null) return cachedCharWidth;
-  const span = document.createElement('span');
-  span.style.cssText = `${CHAR_SIZE_CSS} position: absolute; visibility: hidden; white-space: pre;`;
-  span.textContent = '0';
-  document.body.appendChild(span);
-  const width = span.getBoundingClientRect().width || 1;
-  span.remove();
-  cachedCharWidth = width;
-  return width;
-}
+/** reduced-motion 時はこの秒数ぶん進めた 1 枚だけを描く (空っぽの絵にしないため) */
+const PREWARM_SECONDS = 2;
 
-function buildPre(className: string, color: string): HTMLPreElement {
-  const pre = document.createElement('pre');
-  pre.className = className;
-  pre.setAttribute('aria-hidden', 'true');
-  pre.style.cssText = `${CHAR_SIZE_CSS} margin: 0; position: absolute; pointer-events: none; color: ${color};`;
-  return pre;
-}
+// (biome, 何個目) ごとに seed を変えて、カード毎に違う絵にする
+const attachCount: Partial<Record<BiomeId, number>> = {};
 
-function render(pre: HTMLPreElement, decor: Decor, cols: number): void {
-  pre.textContent = decorRows(decor, cols).join('\n');
+type Layer = { canvas: HTMLCanvasElement; rebuild(cols: number): void };
+
+function createLayer(box: HTMLElement, className: string, rows: number, seed: number, factory: Factory): Layer {
+  const canvas = document.createElement('canvas');
+  canvas.className = className;
+  canvas.setAttribute('aria-hidden', 'true');
+  canvas.style.cssText = 'position: absolute; display: block; pointer-events: none;';
+  box.appendChild(canvas);
+  const renderer = createGridRenderer(canvas);
+  const reduced = prefersReducedMotion();
+
+  let cols = -1;
+  let grid = new CharGrid(0, rows);
+  let scene: Scene = factory(0, rows, seed);
+  const draw = (): void => {
+    grid.clear();
+    scene.draw(grid);
+    renderer.draw(grid);
+  };
+
+  if (!reduced) register(canvas, { step: (dt) => scene.step(dt), draw });
+
+  return {
+    canvas,
+    rebuild(nextCols: number): void {
+      if (nextCols === cols) return;
+      cols = nextCols;
+      grid = new CharGrid(cols, rows);
+      scene = factory(cols, rows, seed);
+      renderer.resize(cols, rows);
+      if (reduced) {
+        for (let i = 0; i < Math.round(PREWARM_SECONDS / DT); i++) scene.step(DT);
+      }
+      draw();
+    },
+  };
 }
 
 export function attachDecor(box: HTMLElement, biome: BiomeId): void {
-  const decor = DECOR[biome];
+  const cfg = DECOR[biome];
+  const index = attachCount[biome] ?? 0;
+  attachCount[biome] = index + 1;
+  const seed = seedFor(biome, index);
+
   box.style.position = 'relative';
-  box.style.setProperty('--decor-rows', String(decor.rows.length));
+  box.style.setProperty('--decor-rows', String(cfg.rows));
 
-  const pre = buildPre(`decor decor-${decor.edge}`, decor.color);
-  if (decor.edge === 'top') {
-    pre.style.top = '0';
-    pre.style.left = '0';
-    box.style.paddingTop = 'calc(var(--decor-rows) * 1.1em + 12px)';
-  } else {
-    pre.style.bottom = '0';
-    pre.style.left = '0';
-    box.style.paddingBottom = 'calc(var(--decor-rows) * 1.1em + 12px)';
-  }
-  box.appendChild(pre);
+  const main = createLayer(box, `decor decor-${cfg.edge}`, cfg.rows, seed, FACTORIES[biome]);
+  main.canvas.style.left = '0';
+  if (cfg.edge === 'top') main.canvas.style.top = '0';
+  else main.canvas.style.bottom = '0';
+  if (cfg.edge === 'top') box.style.paddingTop = 'calc(var(--decor-rows) * 1.1em + 12px)';
+  else box.style.paddingBottom = 'calc(var(--decor-rows) * 1.1em + 12px)';
 
-  if (decor.corner) {
-    const cornerPre = buildPre('decor decor-corner', decor.corner.color);
-    cornerPre.style.top = '0';
-    cornerPre.style.right = '0';
-    box.appendChild(cornerPre);
-    const cornerCols = decor.corner.rows[0]?.length ?? 0;
-    cornerPre.textContent = decor.corner.rows.map((row) => row.slice(0, cornerCols)).join('\n');
-
+  const corner = cfg.corner;
+  if (corner) {
+    const layer = createLayer(box, 'decor decor-corner', corner.rows, seed ^ 0x9e3779b9, (c, r, s) =>
+      createDesertCorner(c, r, s, corner.palette),
+    );
+    layer.canvas.style.top = '0';
+    layer.canvas.style.right = '0';
+    layer.rebuild(corner.cols);
     // 右上に乗る corner はメインの edge とは別に上側の余白を確保する
     // (メインが top edge の場合は両方を足し合わせて重ならないようにする)
-    const cornerRows = decor.corner.rows.length;
     box.style.paddingTop =
-      decor.edge === 'top'
-        ? `calc(var(--decor-rows) * 1.1em + 12px + ${cornerRows} * 1.1em + 8px)`
-        : `calc(${cornerRows} * 1.1em + 8px)`;
+      cfg.edge === 'top'
+        ? `calc(var(--decor-rows) * 1.1em + 12px + ${corner.rows} * 1.1em + 8px)`
+        : `calc(${corner.rows} * 1.1em + 8px)`;
   }
 
   const update = (): void => {
-    const charWidth = measureCharWidth();
-    const cols = Math.max(0, Math.floor(box.clientWidth / charWidth));
-    render(pre, decor, cols);
+    const cols = Math.max(0, Math.floor(box.clientWidth / measureCharWidth()));
+    main.rebuild(cols);
   };
-
   update();
 
   if (typeof ResizeObserver !== 'undefined') {

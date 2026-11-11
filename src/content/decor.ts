@@ -1,76 +1,65 @@
 import type { BiomeId } from './sections';
 
 export type DecorEdge = 'top' | 'bottom';
-export type Decor = {
-  edge: DecorEdge;
-  rows: string[];
-  color: string;
-  corner?: { rows: string[]; color: string };
+
+export type DecorCorner = {
+  /** 右上に置く小さな canvas のサイズ (文字数) */
+  cols: number;
+  rows: number;
+  palette: string[];
 };
 
-export function tileRow(pattern: string, width: number): string {
-  if (width <= 0) return '';
-  if (pattern === '') return ' '.repeat(width);
-  let out = '';
-  while (out.length < width) out += pattern;
-  return out.slice(0, width);
-}
+/**
+ * decor の設定のみ。絵そのものは src/ui/asciifx/scenes/* が手続き的に描く。
+ * palette は明→暗 (白いパネル上で読める濃さに寄せてある)。accents は花・蝶・露など差し色。
+ */
+export type DecorConfig = {
+  edge: DecorEdge;
+  /** decor 領域の高さ (行数, 4–6) */
+  rows: number;
+  palette: string[];
+  accents?: string[];
+  corner?: DecorCorner;
+};
 
-export function decorRows(decor: Decor, width: number): string[] {
-  return decor.rows.map((row) => tileRow(row, width));
-}
-
-export const DECOR: Record<BiomeId, Decor> = {
+export const DECOR: Record<BiomeId, DecorConfig> = {
   meadow: {
     edge: 'bottom',
-    color: '#3f8f3a',
-    rows: [
-      '  ,  \\|/  *  ,  \\|/',
-      ',\\|/,.|.,\\|/,,|,.\\|',
-    ],
+    rows: 5,
+    palette: ['#9bd86f', '#6cbf4e', '#4a9e3c', '#33792e', '#215522'],
+    // 花: ピンク / 黄 / 薄紫, 蝶: オレンジ
+    accents: ['#ff5fa2', '#f2b705', '#9a7bff', '#ff8a1f'],
   },
   forest: {
     edge: 'top',
-    color: '#2f6b2a',
-    rows: [
-      '}{@}{~@~}{@}{~~@~}{',
-      ' |  @   |  |   @  |',
-      ' @       \'  @      ',
-    ],
+    rows: 5,
+    palette: ['#86c96f', '#57a14a', '#357530', '#235222', '#163a17'],
+    // 葉の差し色 (黄緑・枯葉) / 露
+    accents: ['#b5d13a', '#c98a2b', '#4aa3ff'],
   },
   snow: {
     edge: 'top',
-    color: '#6aa9ff',
-    rows: [
-      '~~~~~~~~~~~~~~~~~~~',
-      '| || |  ||  | ||| |',
-      '\' |\' \'  |\'  \' |\'\' \'',
-      '  \'        \'    \'  ',
-    ],
+    rows: 6,
+    palette: ['#cfe3fb', '#a9cdf5', '#7fb2ec', '#5a95dd', '#3b74c4', '#24549a'],
+    // きらめき / 氷柱の青み / 雫
+    accents: ['#1f8bff', '#6fb6e8', '#3d9bea'],
   },
   desert: {
     edge: 'bottom',
-    color: '#c9a86a',
-    rows: [
-      '~-.._..--~~--.._..-',
-      '  ..   \'\'   ..   \'\'',
-    ],
+    rows: 5,
+    palette: ['#ecd39b', '#dcb873', '#c99a52', '#a67b3a', '#7d5a28'],
     corner: {
-      color: '#8a7a4a',
-      rows: [
-        '  _  *  ',
-        ' ( `  . ',
-        '  ~   * ',
-      ],
+      cols: 12,
+      rows: 4,
+      // 月 (明→暗) と星
+      palette: ['#e8c547', '#d1a92e', '#a8861f', '#8a7a4a'],
     },
   },
   volcano: {
     edge: 'top',
-    color: '#ff5a18',
-    rows: [
-      'vVvVvVvVvVvVvVvVvVvV',
-      ' | . |  . | . |  .  ',
-      ' .   \'    .   \'     ',
-    ],
+    rows: 6,
+    // 溶岩 (明→暗) + 地殻の暗赤・黒 + 煙
+    palette: ['#ffe08a', '#ffb03a', '#ff6a1a', '#c2300c', '#6b1a0a', '#2a0d08'],
+    accents: ['#8a7f7a'],
   },
 };

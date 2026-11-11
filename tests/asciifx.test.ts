@@ -92,3 +92,111 @@ describe('rng', () => {
     expect(seedFor('snow', 0)).not.toBe(seedFor('meadow', 0));
   });
 });
+
+// ---- biome scenes -------------------------------------------------------
+import { createSnow } from '../src/ui/asciifx/scenes/snow';
+import { createMeadow } from '../src/ui/asciifx/scenes/meadow';
+import { createForest } from '../src/ui/asciifx/scenes/forest';
+import { createDesert, createDesertCorner } from '../src/ui/asciifx/scenes/desert';
+import { createVolcano } from '../src/ui/asciifx/scenes/volcano';
+import type { Scene } from '../src/ui/asciifx/scenes/types';
+import { DECOR } from '../src/content/decor';
+
+const STEP = 1 / 12;
+type Factory = (cols: number, rows: number, seed: number) => Scene;
+const SCENES: Array<[string, Factory, number]> = [
+  ['snow', createSnow, DECOR.snow.rows],
+  ['meadow', createMeadow, DECOR.meadow.rows],
+  ['forest', createForest, DECOR.forest.rows],
+  ['desert', createDesert, DECOR.desert.rows],
+  ['desert-corner', createDesertCorner, 4],
+  ['volcano', createVolcano, DECOR.volcano.rows],
+];
+
+function run(f: Factory, cols: number, rows: number, seed: number, seconds: number): CharGrid {
+  const scene = f(cols, rows, seed);
+  const grid = new CharGrid(cols, rows);
+  const n = Math.round(seconds / STEP);
+  for (let i = 0; i < n; i++) scene.step(STEP);
+  grid.clear();
+  scene.draw(grid);
+  return grid;
+}
+
+describe.each(SCENES)('scene %s', (_name, factory, rows) => {
+  const cols = 48;
+
+  it('draws in-bounds and non-empty after 5 s', () => {
+    const grid = run(factory, cols, rows, 7, 5);
+    const lines = grid.toLines();
+    expect(lines.length).toBe(rows);
+    for (const l of lines) expect(l.length).toBe(cols);
+    expect(lines.join('').trim().length).toBeGreaterThan(0);
+  });
+
+  it('is deterministic per seed and differs across seeds', () => {
+    const a = run(factory, cols, rows, 11, 5).toLines();
+    const b = run(factory, cols, rows, 11, 5).toLines();
+    const c = run(factory, cols, rows, 12, 5).toLines();
+    expect(a).toEqual(b);
+    expect(a).not.toEqual(c);
+  });
+
+  it('survives tiny and zero-width grids', () => {
+    expect(() => run(factory, 0, rows, 1, 1)).not.toThrow();
+    expect(() => run(factory, 3, rows, 1, 1)).not.toThrow();
+  });
+});
+
+describe('snow specifics', () => {
+  it('a drop reaches the bottom row within 6 s', () => {
+    const rows = DECOR.snow.rows;
+    const scene = createSnow(60, rows, 3);
+    const grid = new CharGrid(60, rows);
+    let hit = false;
+    for (let i = 0; i < 72 && !hit; i++) {
+      scene.step(STEP);
+      grid.clear();
+      scene.draw(grid);
+      const last = grid.toLines()[rows - 1] ?? '';
+      if (/[*.]/.test(last)) hit = true;
+    }
+    expect(hit).toBe(true);
+  });
+});
+
+describe('volcano specifics', () => {
+  it('uses a palette colour other than the crust colour (glowing drips)', () => {
+    const rows = DECOR.volcano.rows;
+    const grid = run(createVolcano, 60, rows, 5, 3);
+    const crust = grid.colorAt(0, 0);
+    const lava = new Set(['#ffe08a', '#ffb03a', '#ff6a1a', '#c2300c']);
+    let found = false;
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < 60; x++) {
+        const c = grid.colorAt(x, y);
+        if (grid.chAt(x, y) !== ' ' && c !== crust && lava.has(c)) found = true;
+      }
+    }
+    expect(found).toBe(true);
+  });
+});
+
+describe('meadow specifics', () => {
+  it('the blade in a fixed column changes between t=0 and t=1 s (wind)', () => {
+    const rows = DECOR.meadow.rows;
+    const g0 = run(createMeadow, 60, rows, 9, 0);
+    const g1 = run(createMeadow, 60, rows, 9, 1);
+    const blade = /[/|\\]/;
+    // どこかのセルで、両時刻とも blade 文字なのに向きが変わっていること
+    let changed = false;
+    for (let x = 0; x < 60; x++) {
+      for (let y = 0; y < rows; y++) {
+        const a = g0.chAt(x, y);
+        const b = g1.chAt(x, y);
+        if (blade.test(a) && blade.test(b) && a !== b) changed = true;
+      }
+    }
+    expect(changed).toBe(true);
+  });
+});
