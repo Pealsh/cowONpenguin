@@ -71,7 +71,8 @@ function start(): void {
   const ground = createGround(scene, smallScreen ? 40000 : 110000);
   ground.applyLook(look);
   const stars = createStars(scene);
-  const props = createProps(scene, ranges);
+  // モバイルは見える地面が z≈-6 までなので、背景小物の奥行きを起動時に詰める
+  const props = createProps(scene, ranges, mobile ? { zFar: -6 } : {});
   const rider = createRider();
   const initialMode = location.search.includes('p1') ? 1 : 0;
   rider.setMode(initialMode);
