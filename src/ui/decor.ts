@@ -3,13 +3,18 @@ import { DECOR, decorRows, type Decor } from '../content/decor';
 
 const CHAR_SIZE_CSS = 'font-size: 11px; line-height: 1.1; font-family: ui-monospace, "SF Mono", Menlo, monospace;';
 
-function measureCharWidth(box: HTMLElement): number {
+// すべての decor は同じフォント設定を使うので、1 文字幅は一度測れば十分
+let cachedCharWidth: number | null = null;
+
+function measureCharWidth(): number {
+  if (cachedCharWidth !== null) return cachedCharWidth;
   const span = document.createElement('span');
   span.style.cssText = `${CHAR_SIZE_CSS} position: absolute; visibility: hidden; white-space: pre;`;
   span.textContent = '0';
-  box.appendChild(span);
+  document.body.appendChild(span);
   const width = span.getBoundingClientRect().width || 1;
   span.remove();
+  cachedCharWidth = width;
   return width;
 }
 
@@ -49,10 +54,18 @@ export function attachDecor(box: HTMLElement, biome: BiomeId): void {
     box.appendChild(cornerPre);
     const cornerCols = decor.corner.rows[0]?.length ?? 0;
     cornerPre.textContent = decor.corner.rows.map((row) => row.slice(0, cornerCols)).join('\n');
+
+    // 右上に乗る corner はメインの edge とは別に上側の余白を確保する
+    // (メインが top edge の場合は両方を足し合わせて重ならないようにする)
+    const cornerRows = decor.corner.rows.length;
+    box.style.paddingTop =
+      decor.edge === 'top'
+        ? `calc(var(--decor-rows) * 1.1em + 12px + ${cornerRows} * 1.1em + 8px)`
+        : `calc(${cornerRows} * 1.1em + 8px)`;
   }
 
   const update = (): void => {
-    const charWidth = measureCharWidth(box);
+    const charWidth = measureCharWidth();
     const cols = Math.max(0, Math.floor(box.clientWidth / charWidth));
     render(pre, decor, cols);
   };

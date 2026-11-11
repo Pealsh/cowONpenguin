@@ -113,9 +113,10 @@ export function renderSections(
         section.appendChild(buildContact());
         break;
     }
+    main.appendChild(section);
+    // decor は clientWidth を測るので、section がドキュメントに繋がった後に付ける
     const copyEl = section.querySelector('.copy');
     if (copyEl instanceof HTMLElement) attachDecor(copyEl, def.biome);
-    main.appendChild(section);
   }
   if (!worksContainer) throw new Error('sections: works section missing');
   return { worksContainer };

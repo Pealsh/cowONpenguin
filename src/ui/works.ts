@@ -69,7 +69,6 @@ function buildCard(work: Work): HTMLElement {
   article.className = 'card';
   article.id = `work-${work.id}`;
 
-  attachDecor(article, 'snow');
   article.appendChild(buildFigure(work));
 
   const title = document.createElement('h3');
@@ -106,6 +105,8 @@ export function renderWorks(container: HTMLElement, works: readonly Work[]): voi
   for (const work of works) {
     const card = buildCard(work);
     container.appendChild(card);
+    // clientWidth を測るので、DOM に接続された後に decor を付ける
+    attachDecor(card, 'snow');
     cards.push(card);
   }
 

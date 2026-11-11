@@ -92,6 +92,13 @@ body.flat-open #hud button {
   color: var(--ink);
 }
 
+/* flat-open 中でも hover / pressed は白地に読めるよう accent 背景+白文字を保つ */
+body.flat-open #hud button:hover,
+body.flat-open #hud button[aria-pressed='true'] {
+  background: var(--accent);
+  color: #fff;
+}
+
 #flat {
   position: fixed;
   inset: 0;
@@ -177,6 +184,14 @@ button:focus-visible {
   opacity: 0;
   transform: translateY(16px);
   transition: opacity 0.4s, transform 0.4s;
+}
+
+/* decor <pre> は box の padding 内に収め、横スクロールの原因にならないようにする */
+.decor {
+  overflow: hidden;
+  max-width: 100%;
+  pointer-events: none;
+  user-select: none;
 }
 
 .card.visible {
