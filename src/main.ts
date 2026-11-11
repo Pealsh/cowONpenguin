@@ -12,7 +12,7 @@ import { PROFILE } from './content/profile';
 import { WORKS } from './content/works';
 import { renderSections } from './ui/sections';
 import { renderWorks } from './ui/works';
-import { createHud } from './ui/hud';
+import { createHud, type Hud } from './ui/hud';
 import { createFlat } from './ui/flat';
 import { progressFromScroll, smoothProgress } from './scroll/progress';
 import { biomeAt } from './scroll/biome';
@@ -35,31 +35,36 @@ function start(): void {
     mobile = innerWidth < 720;
   });
 
+  function toggleFlatWith(hud: Hud, onOpen?: () => void, onClose?: () => void): void {
+    if (flat.isOpen()) {
+      flat.close();
+      hud.setFlat(false);
+      onClose?.();
+    } else {
+      flat.open();
+      hud.setFlat(true);
+      onOpen?.();
+    }
+  }
+
   const stage = createStage();
   if (!stage) {
     console.warn('scroll-biome: WebGL unavailable');
     const hud = createHud(hudRoot, PROFILE.name, {
       onToggleAscii: () => {},
       onToggleMode: () => {},
-      onToggleFlat: () => toggleFlat(),
+      onToggleFlat: () => toggleFlatWith(hud),
     });
-    function toggleFlat(): void {
-      if (flat.isOpen()) {
-        flat.close();
-        hud.setFlat(false);
-      } else {
-        flat.open();
-        hud.setFlat(true);
-      }
-    }
     hud.hideSceneControls();
+    flat.open();
+    hud.setFlat(true);
     return;
   }
   const { renderer, scene, camera, dpr } = stage;
   const look = BIOME_LOOKS.meadow;
   const lookBuf = createLookBuffer();
 
-  const ground = createGround(scene, 110000);
+  const ground = createGround(scene, mobile ? 40000 : 110000);
   ground.applyLook(look);
   const stars = createStars(scene);
   const props = createProps(scene, ranges);
@@ -68,6 +73,7 @@ function start(): void {
   rider.setMode(initialMode);
   scene.add(rider.group);
   const ascii = createAsciiPass(renderer, dpr);
+  ascii.setCell(mobile ? 9 * dpr : 7 * dpr, mobile ? 14 * dpr : 11 * dpr);
 
   const resize = (): void => {
     stage.resize();
@@ -87,22 +93,10 @@ function start(): void {
       rider.setMode(rider.mode === 0 ? 1 : 0);
       hud.setMode(rider.mode);
     },
-    onToggleFlat: () => toggleFlat(),
+    onToggleFlat: () => toggleFlatWith(hud, stop, start_),
   });
   hud.setAscii(asciiOn);
   hud.setMode(rider.mode);
-
-  function toggleFlat(): void {
-    if (flat.isOpen()) {
-      flat.close();
-      hud.setFlat(false);
-      start_();
-    } else {
-      flat.open();
-      hud.setFlat(true);
-      stop();
-    }
-  }
 
   const clock = new Clock();
   let smoothed = 0;
@@ -123,8 +117,9 @@ function start(): void {
     gait += speed * dt * 2.2;
     const k = Math.min(1, speed / 3);
 
-    if (dx > 0.001) rider.setHeading(Math.PI / 2, dt);
-    else if (dx < -0.001) rider.setHeading(-Math.PI / 2, dt);
+    const headingDt = reduced ? 1 : dt;
+    if (dx > 0.001) rider.setHeading(Math.PI / 2, headingDt);
+    else if (dx < -0.001) rider.setHeading(-Math.PI / 2, headingDt);
 
     rider.group.position.x = x;
     rider.update(gait, k, t);
