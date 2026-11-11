@@ -18,5 +18,91 @@ body {
 canvas {
   position: fixed;
   inset: 0;
+  z-index: 0;
   display: block;
+}
+
+main {
+  position: relative;
+  z-index: 1;
+}
+
+#hud {
+  position: fixed;
+  z-index: 2;
+}
+
+#flat {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  overflow: auto;
+  background: var(--bg);
+}
+
+section {
+  min-height: var(--h);
+  display: flex;
+  align-items: center;
+}
+
+.copy {
+  width: min(50%, 520px);
+  margin-left: 16px;
+  background: rgba(5, 8, 6, 0.78);
+  border: 1px solid var(--dim);
+  padding: 20px 22px;
+}
+
+.card {
+  width: min(440px, 100% - 32px);
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.4s, transform 0.4s;
+}
+
+.card.visible {
+  opacity: 1;
+  transform: none;
+}
+
+figure {
+  aspect-ratio: 16 / 9;
+}
+
+.card img:hover {
+  filter: brightness(1.15);
+}
+
+.ph {
+  aspect-ratio: 16 / 9;
+  display: grid;
+  place-items: center;
+  font-family: monospace;
+  color: var(--dim);
+}
+
+.ph-initial {
+  font-size: 56px;
+  color: var(--accent);
+}
+
+@media (max-width: 719px) {
+  .copy {
+    width: calc(100% - 32px);
+    margin-top: 33vh;
+  }
+  section {
+    align-items: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}
+
+body.flat-open {
+  overflow: hidden;
 }
