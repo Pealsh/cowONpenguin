@@ -9,6 +9,8 @@ export type BiomeLook = {
   fog: Color;
   sky: Color;
   starAlpha: number;
+  starColor: Color;
+  starLift: number;
 };
 
 const meadow = (): BiomeLook => ({
@@ -19,6 +21,8 @@ const meadow = (): BiomeLook => ({
   fog: new Color(0x020302),
   sky: new Color(0x020302),
   starAlpha: 0.3,
+  starColor: new Color(0xffffff),
+  starLift: 0,
 });
 
 const forest = (): BiomeLook => ({
@@ -29,6 +33,8 @@ const forest = (): BiomeLook => ({
   fog: new Color(0x030a04),
   sky: new Color(0x030a04),
   starAlpha: 0.1,
+  starColor: new Color(0xffffff),
+  starLift: 0,
 });
 
 const snow = (): BiomeLook => ({
@@ -39,6 +45,8 @@ const snow = (): BiomeLook => ({
   fog: new Color(0x7d8f9d),
   sky: new Color(0x7d8f9d),
   starAlpha: 0.2,
+  starColor: new Color(0xffffff),
+  starLift: 0,
 });
 
 const desert = (): BiomeLook => ({
@@ -49,16 +57,20 @@ const desert = (): BiomeLook => ({
   fog: new Color(0x0a1030),
   sky: new Color(0x0a1030),
   starAlpha: 1.0,
+  starColor: new Color(0xffffff),
+  starLift: 8,
 });
 
-const shore = (): BiomeLook => ({
-  ground: new Color(0xb8a878),
-  grassBase: new Color(0x3a5a3a),
-  grassTip: new Color(0x8fcf8f),
-  grassDensity: 0.3,
-  fog: new Color(0x3a5a6a),
-  sky: new Color(0x3a5a6a),
-  starAlpha: 0.4,
+const volcano = (): BiomeLook => ({
+  ground: new Color(0x1a1412),
+  grassBase: new Color(0x140c08),
+  grassTip: new Color(0x5a2a14),
+  grassDensity: 0.05,
+  fog: new Color(0x2a0c06),
+  sky: new Color(0x2a0c06),
+  starAlpha: 0.9,
+  starColor: new Color(0xff7a2a),
+  starLift: 0,
 });
 
 // blendLook の out 用。BIOME_LOOKS の値そのものは書き換えない別バッファを作る
@@ -69,7 +81,7 @@ export const BIOME_LOOKS: Record<BiomeId, BiomeLook> = {
   forest: forest(),
   snow: snow(),
   desert: desert(),
-  shore: shore(),
+  volcano: volcano(),
 };
 
 export function blendLook(a: BiomeLook, b: BiomeLook, t: number, out: BiomeLook): BiomeLook {
@@ -80,5 +92,7 @@ export function blendLook(a: BiomeLook, b: BiomeLook, t: number, out: BiomeLook)
   out.fog.lerpColors(a.fog, b.fog, t);
   out.sky.lerpColors(a.sky, b.sky, t);
   out.starAlpha = a.starAlpha + (b.starAlpha - a.starAlpha) * t;
+  out.starColor.lerpColors(a.starColor, b.starColor, t);
+  out.starLift = a.starLift + (b.starLift - a.starLift) * t;
   return out;
 }

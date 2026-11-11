@@ -1,4 +1,4 @@
-import { MathUtils, BufferAttribute, BufferGeometry, Points, PointsMaterial, Scene } from 'three';
+import { BufferAttribute, BufferGeometry, Points, PointsMaterial, Scene } from 'three';
 import { PATH_LENGTH } from '../scroll/path';
 import type { BiomeLook } from './biomes';
 
@@ -24,9 +24,8 @@ export function createStars(scene: Scene): Stars {
   return {
     update(time, look) {
       mat.opacity = look.starAlpha;
-      // 混合中に跳ねないよう、starAlpha に応じて滑らかに持ち上げる
-      const lift = 8 * MathUtils.smoothstep(look.starAlpha, 0.4, 1);
-      points.position.y = Math.sin(time * 0.5) * 0.3 + lift;
+      mat.color.copy(look.starColor);
+      points.position.y = Math.sin(time * 0.5) * 0.3 + look.starLift;
     },
   };
 }

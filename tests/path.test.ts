@@ -5,7 +5,7 @@ import { PATH_LENGTH, sectionRanges, worldX } from '../src/scroll/path';
 describe('buildSections', () => {
   it('has 5 sections in order with biomes', () => {
     expect(buildSections(3).map(s => `${s.id}/${s.biome}`)).toEqual(
-      ['intro/meadow', 'about/forest', 'works/snow', 'skills/desert', 'contact/shore']);
+      ['intro/meadow', 'about/forest', 'works/snow', 'skills/desert', 'contact/volcano']);
   });
   it('works height grows by 60vh per item from 100vh', () => {
     expect(buildSections(0)[2]!.heightVh).toBe(100);

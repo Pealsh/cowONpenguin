@@ -2,7 +2,6 @@ import {
   BoxGeometry,
   ConeGeometry,
   CylinderGeometry,
-  DoubleSide,
   Group,
   IcosahedronGeometry,
   Mesh,
@@ -16,8 +15,6 @@ import type { SectionRange } from '../scroll/path';
 import { layoutProps, mulberry32 } from './propsLayout';
 
 export type Props = { update(time: number): void };
-
-type WaveEntry = { group: Group; baseZ: number; phase: number };
 
 // legacy/index.html の木（Box 幹 + Icosahedron 葉、0x2b241c / 0x3f6b3a）を各バイオームの小物に流用する
 export function createProps(scene: Scene, ranges: readonly SectionRange[]): Props {
@@ -50,15 +47,14 @@ export function createProps(scene: Scene, ranges: readonly SectionRange[]): Prop
   const rockMat = new MeshLambertMaterial({ color: 0x8a8a84 });
   const rockGeo = new IcosahedronGeometry(0.8, 0);
 
-  const waveMat = new MeshBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 0.55,
-    side: DoubleSide,
-    depthWrite: false,
-  });
+  // volcano: 火口の本体（暗い岩）とクレーターの発光キャップ
+  const volcanoMat = new MeshLambertMaterial({ color: 0x2a1a14 });
+  const craterMat = new MeshBasicMaterial({ color: 0xff4a10 });
+  const volcanoGeo = new ConeGeometry(6, 8, 24);
+  const craterGeo = new ConeGeometry(1.6, 1.2, 16);
 
-  const waves: WaveEntry[] = [];
+  // volcano: 地面を這う溶岩の裂け目（1 マテリアルを全 lavaCrack で共有してパルスさせる）
+  const lavaMat = new MeshBasicMaterial({ color: 0xff5a18 });
 
   for (const p of placements) {
     const group = new Group();
@@ -120,12 +116,21 @@ export function createProps(scene: Scene, ranges: readonly SectionRange[]): Prop
         group.add(rock);
         break;
       }
-      case 'wave': {
-        const plane = new Mesh(new PlaneGeometry(p.width ?? 10, 1.2), waveMat);
+      case 'cone': {
+        const mountain = new Mesh(volcanoGeo, volcanoMat);
+        mountain.position.y = 4;
+        const crater = new Mesh(craterGeo, craterMat);
+        crater.position.y = 8.6;
+        group.add(mountain, crater);
+        break;
+      }
+      case 'lavaCrack': {
+        const width = 2.5 + jitter() * 1.5;
+        const plane = new Mesh(new PlaneGeometry(width, 0.25), lavaMat);
         plane.rotation.x = -Math.PI / 2;
-        plane.position.y = 0.05;
+        plane.rotation.z = jitter() * Math.PI * 2;
+        plane.position.y = 0.03;
         group.add(plane);
-        waves.push({ group, baseZ: p.z, phase: waves.length === 0 ? 0 : 1.5 });
         break;
       }
     }
@@ -135,9 +140,9 @@ export function createProps(scene: Scene, ranges: readonly SectionRange[]): Prop
 
   return {
     update(time) {
-      for (const w of waves) {
-        w.group.position.z = w.baseZ + Math.sin(time * 0.8 + w.phase) * 0.6;
-      }
+      // 1 マテリアルだけ色の明るさを脈動させる（溶岩が火照るように見せる、個別メッシュの更新はしない）
+      const pulse = 0.8 + 0.2 * Math.sin(time * 2);
+      lavaMat.color.setRGB(1 * pulse, 0.35 * pulse, 0.094 * pulse);
     },
   };
 }

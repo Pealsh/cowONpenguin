@@ -19,8 +19,8 @@ describe('layoutProps', () => {
     }
   });
 
-  it('keeps every non-wave prop behind the walking lane, in view (z in [-28, -6])', () => {
-    for (const p of placements.filter(q => q.kind !== 'wave')) {
+  it('keeps every prop behind the walking lane, in view (z in [-28, -6])', () => {
+    for (const p of placements) {
       expect(p.z).toBeGreaterThanOrEqual(-28);
       expect(p.z).toBeLessThanOrEqual(-6);
     }
@@ -33,12 +33,30 @@ describe('layoutProps', () => {
     expect(countByKind('pine')).toBe(18);
     expect(countByKind('cactus')).toBe(10);
     expect(countByKind('rock')).toBe(12);
-    expect(countByKind('wave')).toBe(2);
+    expect(countByKind('cone')).toBe(2);
+    expect(countByKind('lavaCrack')).toBe(8);
   });
 
-  it('shore waves sit on the far side at z = -13 and z = -8', () => {
-    const waveZs = placements.filter(p => p.kind === 'wave').map(p => p.z).sort((a, b) => a - b);
-    expect(waveZs).toEqual([-13, -8]);
+  it('has no wave kind anywhere', () => {
+    expect(placements.some(p => (p.kind as string) === 'wave')).toBe(false);
+  });
+
+  it('places exactly 2 volcano cones at z <= -12', () => {
+    const cones = placements.filter(p => p.kind === 'cone');
+    expect(cones.length).toBe(2);
+    for (const c of cones) expect(c.z).toBeLessThanOrEqual(-12);
+  });
+
+  it('places exactly 8 lavaCracks with |z| >= 6 inside the contact range x-bounds', () => {
+    const contact = ranges.find(r => r.biome === 'volcano')!;
+    const x0 = worldX(contact.start), x1 = worldX(contact.end);
+    const cracks = placements.filter(p => p.kind === 'lavaCrack');
+    expect(cracks.length).toBe(8);
+    for (const c of cracks) {
+      expect(Math.abs(c.z)).toBeGreaterThanOrEqual(6);
+      expect(c.x).toBeGreaterThanOrEqual(x0);
+      expect(c.x).toBeLessThanOrEqual(x1);
+    }
   });
 
   it('is deterministic for a fixed seed', () => {

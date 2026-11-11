@@ -28,7 +28,7 @@ describe('biomeAt', () => {
   });
   it('clamps progress outside 0..1 to the end biomes', () => {
     expect(biomeAt(-0.5, ranges)).toEqual({ a: 'meadow', b: 'meadow', t: 0 });
-    expect(biomeAt(1.5, ranges)).toEqual({ a: 'shore', b: 'shore', t: 0 });
+    expect(biomeAt(1.5, ranges)).toEqual({ a: 'volcano', b: 'volcano', t: 0 });
   });
   it('handles empty ranges', () => expect(biomeAt(0.3, [])).toEqual({ a: 'meadow', b: 'meadow', t: 0 }));
 });
