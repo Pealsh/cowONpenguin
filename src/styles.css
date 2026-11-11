@@ -1,8 +1,11 @@
 :root {
-  --fg: #d8e6d0;
-  --dim: #7f9378;
+  --paper: rgba(255, 255, 255, 0.92);
+  --paper-solid: #ffffff;
+  --ink: #1a1d22;
+  --ink-dim: #5b6472;
+  --accent: #2f6bff;
+  --on-dark: #f4f6fb;
   --bg: #050806;
-  --accent: #f2f5e8;
 }
 
 *,
@@ -19,7 +22,7 @@ body {
   width: 100%;
   height: 100%;
   background: var(--bg);
-  color: var(--fg);
+  color: var(--on-dark);
 }
 
 canvas {
@@ -55,7 +58,7 @@ main {
   margin: 0;
   font-size: 15px;
   letter-spacing: 0.15em;
-  color: var(--accent);
+  color: var(--on-dark);
 }
 
 #hud .buttons {
@@ -66,22 +69,27 @@ main {
 
 #hud button {
   background: transparent;
-  color: var(--fg);
-  border: 1px solid var(--dim);
+  color: var(--on-dark);
+  border: 1px solid var(--accent);
   padding: 6px 10px;
   font: inherit;
   font-size: 12px;
   cursor: pointer;
 }
 
-#hud button:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+#hud button:hover,
+#hud button[aria-pressed='true'] {
+  background: var(--accent);
+  color: #fff;
 }
 
-#hud button[aria-pressed='true'] {
-  border-color: var(--accent);
-  color: var(--accent);
+body.flat-open #hud {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
+}
+
+body.flat-open #hud .name,
+body.flat-open #hud button {
+  color: var(--ink);
 }
 
 #flat {
@@ -89,7 +97,8 @@ main {
   inset: 0;
   z-index: 3;
   overflow: auto;
-  background: var(--bg);
+  background: var(--paper-solid);
+  color: var(--ink);
   padding: 56px 16px;
 }
 
@@ -98,10 +107,14 @@ main {
   margin: 0 auto 32px;
 }
 
+#flat h2,
+#flat h3 {
+  color: var(--accent);
+}
+
 #flat h2 {
   font-size: 14px;
   letter-spacing: 0.2em;
-  color: var(--accent);
 }
 
 main > section {
@@ -131,7 +144,8 @@ button:focus-visible {
 }
 
 .tags li {
-  border: 1px solid var(--dim);
+  border: 1px solid var(--ink-dim);
+  color: var(--ink);
   padding: 2px 6px;
   font-size: 11px;
 }
@@ -139,9 +153,23 @@ button:focus-visible {
 .copy {
   width: min(50%, 520px);
   margin-left: 16px;
-  background: rgba(5, 8, 6, 0.78);
-  border: 1px solid var(--dim);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--accent);
   padding: 20px 22px;
+}
+
+.copy h1,
+.copy h2,
+.copy h3 {
+  color: var(--accent);
+}
+
+.copy .card {
+  background: #fff;
+  border: 1px solid rgba(47, 107, 255, 0.35);
+  padding: 12px;
+  margin-bottom: 16px;
 }
 
 .card {
@@ -170,7 +198,7 @@ figure {
   display: grid;
   place-items: center;
   font-family: monospace;
-  color: var(--dim);
+  color: var(--ink-dim);
 }
 
 .ph-initial {
