@@ -1,9 +1,10 @@
 import { Clock } from 'three';
 import { createAsciiPass } from './scene/ascii';
-import { BIOME_LOOKS } from './scene/biomes';
+import { BIOME_LOOKS, blendLook, createLookBuffer } from './scene/biomes';
 import { updateCamera } from './scene/camera';
 import { createRider } from './scene/creatures/rider';
 import { createGround } from './scene/ground';
+import { createProps } from './scene/props';
 import { createStage } from './scene/renderer';
 import { createStars } from './scene/stars';
 import { buildSections } from './content/sections';
@@ -14,7 +15,8 @@ import { renderWorks } from './ui/works';
 import { createHud } from './ui/hud';
 import { createFlat } from './ui/flat';
 import { progressFromScroll, smoothProgress } from './scroll/progress';
-import { worldX } from './scroll/path';
+import { biomeAt } from './scroll/biome';
+import { sectionRanges, worldX } from './scroll/path';
 
 function start(): void {
   const main = document.getElementById('main') as HTMLElement;
@@ -22,6 +24,7 @@ function start(): void {
   const flatRoot = document.getElementById('flat') as HTMLElement;
 
   const sections = buildSections(WORKS.length);
+  const ranges = sectionRanges(sections);
   const { worksContainer } = renderSections(main, sections);
   renderWorks(worksContainer, WORKS);
   const flat = createFlat(flatRoot);
@@ -54,10 +57,12 @@ function start(): void {
   }
   const { renderer, scene, camera, dpr } = stage;
   const look = BIOME_LOOKS.meadow;
+  const lookBuf = createLookBuffer();
 
   const ground = createGround(scene, 110000);
   ground.applyLook(look);
   const stars = createStars(scene);
+  const props = createProps(scene, ranges);
   const rider = createRider();
   const initialMode = location.search.includes('p1') ? 1 : 0;
   rider.setMode(initialMode);
@@ -123,8 +128,13 @@ function start(): void {
 
     rider.group.position.x = x;
     rider.update(gait, k, t);
+
+    const blend = biomeAt(smoothed, ranges);
+    const blended = blendLook(BIOME_LOOKS[blend.a], BIOME_LOOKS[blend.b], blend.t, lookBuf);
+    ground.applyLook(blended);
     ground.update(t, x);
-    stars.update(t, look);
+    stars.update(t, blended);
+    props.update(t);
     updateCamera(camera, x, dt, mobile);
     prevX = x;
 
