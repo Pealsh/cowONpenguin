@@ -14,9 +14,9 @@ import { renderSections } from './ui/sections';
 import { renderWorks } from './ui/works';
 import { createHud, type Hud } from './ui/hud';
 import { createFlat } from './ui/flat';
-import { progressFromScroll, smoothProgress } from './scroll/progress';
+import { progressFromScroll, smoothProgress, limitStep, MAX_WALK_SPEED, MAX_GAIT_SPEED } from './scroll/progress';
 import { biomeAt } from './scroll/biome';
-import { sectionRanges, worldX } from './scroll/path';
+import { sectionRanges, worldX, PATH_LENGTH } from './scroll/path';
 
 function start(): void {
   const main = document.getElementById('main') as HTMLElement;
@@ -122,12 +122,19 @@ function start(): void {
       prevX = worldX(target);
       first = false;
     }
+    const prevSmoothed = smoothed;
     smoothed = reduced ? target : smoothProgress(smoothed, target, dt);
+    // 速くスクロールしても牛の歩行速度には上限を付ける（reduced-motion や初回スナップでは適用しない）
+    if (!reduced && !snap) {
+      smoothed = limitStep(prevSmoothed, smoothed, dt, MAX_WALK_SPEED / PATH_LENGTH);
+    }
     const x = worldX(smoothed);
     const dx = x - prevX;
     const speed = dt > 0 ? Math.abs(dx) / dt : 0;
-    gait += speed * dt * 2.2;
-    const k = Math.min(1, speed / 3);
+    // 脚の waddle アニメの速さにも上限を付ける（位置の速さとは別に上限を設ける）
+    const animSpeed = Math.min(speed, MAX_GAIT_SPEED);
+    gait += animSpeed * dt * 2.2;
+    const k = Math.min(1, animSpeed / 3);
 
     const headingDt = reduced ? 1 : dt;
     if (dx > 0.001) rider.setHeading(Math.PI / 2, headingDt);
