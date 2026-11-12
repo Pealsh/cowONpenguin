@@ -18,14 +18,14 @@ describe('DECOR config', () => {
     expect(DECOR.desert.edge).toBe('bottom');
   });
 
-  it('heights: 5 rows by default, snow and volcano 6, always within 4..6', () => {
+  it('heights: within 4..10, sprite biomes taller', () => {
     for (const id of BIOME_IDS) {
       expect(DECOR[id].rows).toBeGreaterThanOrEqual(4);
-      expect(DECOR[id].rows).toBeLessThanOrEqual(6);
+      expect(DECOR[id].rows).toBeLessThanOrEqual(10);
     }
     expect(DECOR.snow.rows).toBe(6);
     expect(DECOR.volcano.rows).toBe(6);
-    expect(DECOR.meadow.rows).toBe(5);
+    expect(DECOR.meadow.rows).toBe(8);
   });
 
   it('palettes are non-empty lists of #rrggbb colours (accents too)', () => {

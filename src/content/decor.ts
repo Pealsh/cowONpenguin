@@ -15,7 +15,7 @@ export type DecorCorner = {
  */
 export type DecorConfig = {
   edge: DecorEdge;
-  /** decor 領域の高さ (行数, 4–6) */
+  /** decor 領域の高さ (行数, 4–10) */
   rows: number;
   palette: string[];
   accents?: string[];
@@ -30,7 +30,7 @@ export type DecorConfig = {
 export const DECOR: Record<BiomeId, DecorConfig> = {
   meadow: {
     edge: 'bottom',
-    rows: 5,
+    rows: 8,
     // 明→暗 (白パネル上でコントラスト 3:1 以上になるよう調整済み)
     palette: ['#5ea32c', '#56a23b', '#4a9e3c', '#33792e', '#215522'],
     // 花: ピンク / 黄 / 薄紫, 蝶: オレンジ

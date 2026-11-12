@@ -253,3 +253,70 @@ describe('sprite / stamp', () => {
     expect(g.alphaAt(2, 1)).toBeCloseTo(0.5);
   });
 });
+
+describe('meadow sprites', () => {
+  const rows = DECOR.meadow.rows;
+  const BUTTERFLY = /[(){}\\/]/;
+  const flyCells = (g: CharGrid, maxY: number): string[] => {
+    const out: string[] = [];
+    for (let y = 0; y <= maxY; y++) for (let x = 0; x < g.cols; x++) if (BUTTERFLY.test(g.chAt(x, y))) out.push(`${x},${y}`);
+    return out;
+  };
+
+  it('is 8 rows tall', () => {
+    expect(rows).toBe(8);
+  });
+
+  it('a butterfly is in the upper rows and moves between t=1 s and t=2 s', () => {
+    const g1 = run(createMeadow, 60, rows, 9, 1);
+    const g2 = run(createMeadow, 60, rows, 9, 2);
+    // rows 0..2 は花より上 — ここに羽の文字があれば蝶
+    expect(flyCells(g1, 2).length + flyCells(g2, 2).length).toBeGreaterThan(0);
+    const a = flyCells(g1, rows - 4);
+    const b = flyCells(g2, rows - 4);
+    expect(a.length).toBeGreaterThan(0);
+    expect(b.length).toBeGreaterThan(0);
+    expect(a).not.toEqual(b);
+  });
+
+  it('a grass blade in the tuft rows changes over 1 s (wind)', () => {
+    const g1 = run(createMeadow, 60, rows, 9, 1);
+    const g2 = run(createMeadow, 60, rows, 9, 2);
+    const blade = /[/|\\()]/;
+    let changed = false;
+    for (let y = rows - 3; y <= rows - 2; y++) {
+      for (let x = 0; x < 60; x++) {
+        const a = g1.chAt(x, y);
+        const b = g2.chAt(x, y);
+        if (blade.test(a) && blade.test(b) && a !== b) changed = true;
+      }
+    }
+    expect(changed).toBe(true);
+  });
+
+  it('the ground row is dense grass', () => {
+    const last = run(createMeadow, 60, rows, 9, 1).toLines()[rows - 1] ?? '';
+    expect(last.replace(/[^\\|/]/g, '').length).toBeGreaterThan(45);
+  });
+});
+
+describe('meadow sprite shapes', () => {
+  const rows = DECOR.meadow.rows;
+  it('butterflies are 2-row sprites (wing chars stacked vertically in the upper rows)', () => {
+    const g = run(createMeadow, 60, rows, 9, 1);
+    const wing = /[(){}\\/]/;
+    let stacked = 0;
+    for (let y = 0; y < rows - 4; y++) {
+      for (let x = 0; x < 60; x++) if (wing.test(g.chAt(x, y)) && wing.test(g.chAt(x, y + 1))) stacked++;
+    }
+    expect(stacked).toBeGreaterThanOrEqual(2);
+  });
+
+  it('grass tufts are fan-shaped sprites (\\|/ above \\\\|//-like rows)', () => {
+    const lines = run(createMeadow, 60, rows, 9, 0).toLines();
+    const tuftRows = lines.slice(rows - 3, rows - 1).join('\n');
+    // 無風に近い t=0 で扇形の房がいくつも並ぶ
+    expect((tuftRows.match(/[\\(|][|)][/)|]/g) ?? []).length).toBeGreaterThanOrEqual(4);
+    expect(lines.slice(0, rows - 3).join('').trim().length).toBeGreaterThan(0);
+  });
+});
