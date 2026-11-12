@@ -24,7 +24,7 @@ describe('DECOR config', () => {
       expect(DECOR[id].rows).toBeLessThanOrEqual(10);
     }
     expect(DECOR.snow.rows).toBe(10);
-    expect(DECOR.volcano.rows).toBe(6);
+    expect(DECOR.volcano.rows).toBe(8);
     expect(DECOR.meadow.rows).toBe(8);
     expect(DECOR.desert.rows).toBe(9);
   });

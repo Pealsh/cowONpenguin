@@ -65,7 +65,7 @@ export const DECOR: Record<BiomeId, DecorConfig> = {
   },
   volcano: {
     edge: 'top',
-    rows: 6,
+    rows: 8,
     // 溶岩 (明→暗) + 地殻の暗赤・黒
     palette: ['#bc8a00', '#d27d00', '#fd5800', '#c2300c', '#6b1a0a', '#2a0d08'],
     // 煙の帯は常に alpha < 0.6 (低アルファ) で描くので faint に置く

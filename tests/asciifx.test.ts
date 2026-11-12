@@ -404,3 +404,54 @@ describe('desert sprites', () => {
     expect(Math.max(...xs)).toBeGreaterThan(xs[0] ?? 0);
   });
 });
+
+describe('volcano sprites', () => {
+  const rows = DECOR.volcano.rows;
+  const cols = 60;
+  const coneTop = (g: CharGrid): number => {
+    for (let y = 0; y < rows; y++) if (g.toLines()[y]?.slice(cols - 14).includes('/\\')) return y;
+    return -1;
+  };
+
+  it('is 8 rows tall', () => {
+    expect(rows).toBe(8);
+  });
+
+  it('with cols >= 40 a volcano cone /\\ sits in the right 14 cols', () => {
+    for (const c of [40, 60]) {
+      const g = run(createVolcano, c, rows, 5, 0.5);
+      const right = g.toLines().map((l) => l.slice(c - 14));
+      expect(right.some((l) => l.includes('/\\')), `cols ${c}`).toBe(true);
+      expect(right.slice(rows - 2).join('')).toMatch(/\//);
+    }
+  });
+
+  it('erupts within 8 s: a spark * appears above the cone', () => {
+    const scene = createVolcano(cols, rows, 5);
+    const grid = new CharGrid(cols, rows);
+    let top = -1;
+    let spark = false;
+    for (let i = 0; i < 12 * 8 && !spark; i++) {
+      scene.step(STEP);
+      grid.clear();
+      scene.draw(grid);
+      if (top < 0) top = coneTop(grid);
+      for (let y = 1; y < top; y++) for (let x = cols - 14; x < cols; x++) if (grid.chAt(x, y) === '*') spark = true;
+    }
+    expect(top).toBeGreaterThan(1);
+    expect(spark).toBe(true);
+  });
+
+  it('a hanging drip pulses: same char, different colour at two times', () => {
+    const a = run(createVolcano, cols, rows, 5, 2);
+    const b = run(createVolcano, cols, rows, 5, 2.5);
+    let pulsed = false;
+    for (let y = 1; y <= 3; y++) {
+      for (let x = 0; x < cols - 14; x++) {
+        const ch = a.chAt(x, y);
+        if (ch === '%' && b.chAt(x, y) === ch && a.colorAt(x, y) !== b.colorAt(x, y)) pulsed = true;
+      }
+    }
+    expect(pulsed).toBe(true);
+  });
+});
