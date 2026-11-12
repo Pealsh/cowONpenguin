@@ -26,6 +26,7 @@ describe('DECOR config', () => {
     expect(DECOR.snow.rows).toBe(10);
     expect(DECOR.volcano.rows).toBe(6);
     expect(DECOR.meadow.rows).toBe(8);
+    expect(DECOR.desert.rows).toBe(9);
   });
 
   it('palettes are non-empty lists of #rrggbb colours (accents too)', () => {

@@ -1,32 +1,90 @@
 import { DECOR } from '../../../content/decor';
 import type { CharGrid } from '../grid';
 import { mulberry32 } from '../rng';
+import { sprite, type Sprite } from '../sprite';
 import { tone, type Scene } from './types';
-import { shade } from '../ramp';
 
-type Grain = { x: number; speed: number; hop: number; ch: string };
+/** 大きなサグアロ (7 行) と小さなサボテン (5 行) */
+const CACTUS_BIG = sprite(['     _', '    | |', ' _  | |  _', '| |_| |_| |', ' \\__   __/', '    | |', '    | |']);
+const CACTUS_SMALL = sprite(['  _', ' | |_', '_| | |', ' | |/', ' | |']);
+/** 転がる回転草の 3 コマ */
+const WEED: readonly Sprite[] = [
+  sprite([' ,@@,', '@(  )@', " '@@'"]),
+  sprite([' .%@,', '%(  )@', " '@%'"]),
+  sprite([' ,@%.', '@(  )%', " '%@'"]),
+];
+const WEED_FRAME = 0.12;
+const DUST_LIFE = 0.6;
 
-export function createDesert(cols: number, rows: number, seed: number, palette = DECOR.desert.palette): Scene {
+type Cactus = { x: number; s: Sprite; trunk: number };
+type Grain = { x: number; speed: number; hop: number };
+type Dust = { alive: boolean; x: number; y: number; age: number; ch: string };
+
+/** 稜線の高さ 0..2 (最下行の底 = 0) を 1 行内の位置で文字に */
+function ridgeChar(frac: number, slope: number): string {
+  if (frac >= 0.8) return "'";
+  if (frac >= 0.45) return Math.abs(slope) < 0.05 ? '~' : '-';
+  if (frac >= 0.25) return '.';
+  return '_';
+}
+
+export function createDesert(cols: number, rows: number, seed: number, palette = DECOR.desert.palette, accents = DECOR.desert.accents ?? []): Scene {
   const rnd = mulberry32(seed);
-  const duneRows = Math.min(rows, 3);
+  const cactusMid = accents[0] ?? '#4a8a32';
+  const cactusDark = accents[1] ?? '#2f6624';
+  const bottom = rows - 1;
+
+  // 砂丘: 最下 2 行に収まるうねり
   const a1 = rnd() * 6.28;
   const a2 = rnd() * 6.28;
-  const f1 = 0.07 + rnd() * 0.04;
-  const f2 = 0.17 + rnd() * 0.06;
-  // 砂丘の高さ (0..duneRows) を列ごとに。小数部で稜線文字 _ - ~ を選ぶ
+  const f1 = 0.13 + rnd() * 0.05;
+  const f2 = 0.33 + rnd() * 0.08;
   const h: number[] = [];
   for (let x = 0; x <= cols; x++) {
-    const v = 0.55 + 0.32 * Math.sin(x * f1 + a1) + 0.13 * Math.sin(x * f2 + a2);
-    h.push(Math.max(0.2, Math.min(duneRows - 0.01, v * duneRows)));
+    const v = 0.5 + 0.42 * Math.sin(x * f1 + a1) + 0.1 * Math.sin(x * f2 + a2);
+    h.push(Math.max(0.05, Math.min(1.95, v * 2)));
   }
-  const tex: number[] = [];
-  for (let i = 0; i < cols * duneRows; i++) tex.push(rnd());
+  const ridgeRow = (x: number): number => bottom - Math.floor(h[Math.max(0, Math.min(cols, Math.floor(x)))] ?? 0);
+  const shadeTex: string[] = [];
+  for (let x = 0; x < cols; x++) {
+    const r = rnd();
+    shadeTex.push(r < 0.5 ? '.' : r < 0.68 ? "'" : ' ');
+  }
+
+  // サボテン: 右端の月の下は避けて、重ならないように 1–3 本
+  const cacti: Cactus[] = [];
+  const usable = cols - 14;
+  const want = cols >= 60 ? 3 : cols >= 32 ? 2 : cols >= 10 ? 1 : 0;
+  for (let i = 0; i < want; i++) {
+    const s = i === 0 && cols >= 24 && rows >= CACTUS_BIG.h + 1 ? CACTUS_BIG : CACTUS_SMALL;
+    const lo = Math.floor((usable * i) / want);
+    const hi = Math.floor((usable * (i + 1)) / want) - s.w - 1;
+    if (hi < lo) continue;
+    const x = lo + Math.floor(rnd() * (hi - lo + 1));
+    cacti.push({ x, s, trunk: s === CACTUS_BIG ? 4 : 1 });
+  }
+  // 大きいサボテンが常に左端にならないよう、位置をランダムに入れ替える
+  if (cacti.length >= 2 && rnd() < 0.5) {
+    const a = cacti[0]!;
+    const b = cacti[cacti.length - 1]!;
+    const ax = a.x;
+    a.x = Math.min(b.x, Math.max(0, usable - a.s.w));
+    b.x = ax;
+  }
 
   const grains: Grain[] = [];
-  for (let i = 0; i < Math.max(1, Math.floor(cols / 6)); i++) {
-    grains.push({ x: rnd() * cols, speed: 3 + rnd() * 5, hop: rnd() * 6.28, ch: rnd() < 0.5 ? '.' : ',' });
-  }
-  const ridgeY = (x: number): number => rows - 1 - Math.floor(h[x] ?? 0);
+  for (let i = 0; i < Math.max(1, Math.floor(cols / 7)); i++) grains.push({ x: rnd() * cols, speed: 2.5 + rnd() * 4, hop: rnd() * 6.28 });
+
+  const dust: Dust[] = [];
+  for (let i = 0; i < 10; i++) dust.push({ alive: false, x: 0, y: 0, age: 0, ch: '.' });
+  let dustCursor = 0;
+
+  // 回転草: 6–10 s 毎に左から右へ
+  let weedX = -99;
+  let weedSpeed = 0;
+  let weedWait = 0.5 + rnd() * 3;
+  let weedPh = 0;
+  let dustTimer = 0;
 
   let t = 0;
   const step = (dt: number): void => {
@@ -35,30 +93,96 @@ export function createDesert(cols: number, rows: number, seed: number, palette =
       g.x += g.speed * dt;
       if (g.x >= cols) g.x -= cols;
     }
+    if (weedX > -99) {
+      weedX += weedSpeed * dt;
+      weedPh += dt;
+      dustTimer -= dt;
+      if (dustTimer <= 0) {
+        dustTimer = 0.1;
+        const d = dust[dustCursor]!;
+        dustCursor = (dustCursor + 1) % dust.length;
+        d.alive = true;
+        d.x = weedX - 1 - rnd() * 1.5;
+        d.y = bottom - 1 - Math.floor(rnd() * 2);
+        d.age = 0;
+        d.ch = rnd() < 0.4 ? '.' : rnd() < 0.5 ? ',' : "'";
+      }
+      if (weedX > cols + 1) {
+        weedX = -99;
+        weedWait = 6 + rnd() * 4;
+      }
+    } else {
+      weedWait -= dt;
+      if (weedWait <= 0 && cols > 0) {
+        weedX = -6;
+        weedSpeed = 6 + rnd() * 3;
+        weedPh = 0;
+      }
+    }
+    for (const d of dust) {
+      if (!d.alive) continue;
+      d.age += dt;
+      if (d.age >= DUST_LIFE) d.alive = false;
+    }
+  };
+
+  const sandTop = tone(palette, 0.55);
+  const sandLee = tone(palette, 0.85);
+  const sandShade = tone(palette, 0.3);
+  const weedColor = tone(palette, 1);
+  const cactusColor = (ch: string): string => (ch === '_' || ch === '/' || ch === '\\' ? cactusDark : cactusMid);
+
+  const drawCactus = (grid: CharGrid, c: Cactus): void => {
+    const footY = ridgeRow(c.x + c.trunk + 1);
+    const top = footY - c.s.h + 1;
+    for (let cy = 0; cy < c.s.h; cy++) {
+      const line = c.s.lines[cy] ?? '';
+      const first = line.search(/\S/);
+      let last = line.length - 1;
+      while (last > 0 && line.charAt(last) === ' ') last--;
+      for (let cx = Math.max(0, first); cx <= last; cx++) {
+        const ch = line.charAt(cx);
+        // 輪郭の内側の空白も不透明にして、後ろを通る回転草を隠す
+        grid.put(c.x + cx, top + cy, ch, ch === ' ' ? '' : cactusColor(ch), ch === ' ' ? 0 : 1);
+      }
+    }
+    // 根元の砂
+    grid.put(c.x + c.trunk - 1, footY, '.', sandTop, 1);
+    grid.put(c.x + c.trunk + 3, footY, '.', sandTop, 1);
   };
 
   const draw = (grid: CharGrid): void => {
     for (let x = 0; x < cols; x++) {
       const hx = h[x] ?? 0;
-      const top = ridgeY(x);
-      const frac = hx - Math.floor(hx);
-      // 光は左上から: 右下がりの斜面 (風下) は影で濃く
+      const ry = ridgeRow(x);
       const slope = (h[x + 1] ?? hx) - hx;
-      const lee = slope < -0.05;
-      const ridge = frac < 0.33 ? '_' : frac < 0.66 ? '-' : '~';
-      grid.put(x, top, ridge, tone(palette, lee ? 0.75 : 0.5), 1);
-      for (let y = top + 1; y < rows; y++) {
-        const depth = (y - top) / duneRows;
-        const n = tex[(y - (rows - duneRows)) * cols + x] ?? 0.5;
-        const ch = shade(Math.min(0.41, 0.1 + depth * 0.2 + (lee ? 0.08 : 0) + n * 0.1));
-        if (ch !== ' ') grid.put(x, y, ch, tone(palette, 0.45 + depth * 0.3 + (lee ? 0.2 : 0)), 0.85);
+      grid.put(x, ry, ridgeChar(hx - Math.floor(hx), slope), slope < -0.03 ? sandLee : sandTop, 1);
+      if (ry < bottom) {
+        const s = shadeTex[x] ?? ' ';
+        if (s !== ' ') grid.put(x, bottom, s, sandShade, 0.75);
       }
     }
     for (const g of grains) {
       const x = Math.floor(g.x);
-      const lift = Math.sin(t * 6 + g.hop) > 0.85 ? 1 : 0;
-      grid.put(x, ridgeY(x) - 1 - lift, g.ch, tone(palette, 0.8), 0.9);
+      const lift = Math.sin(t * 6 + g.hop) > 0.8 ? 1 : 0;
+      grid.put(x, ridgeRow(x) - 1 - lift, '.', sandLee, 0.85);
     }
+    if (weedX > -99) {
+      const frame = WEED[Math.floor(weedPh / WEED_FRAME) % WEED.length] ?? WEED[0]!;
+      const bounce = Math.round(1.6 * Math.abs(Math.sin(weedPh * 4.2)));
+      const wy = Math.min(bottom - 1, ridgeRow(weedX + 3)) - frame.h + 1 - bounce;
+      for (let cy = 0; cy < frame.h; cy++) {
+        const line = frame.lines[cy] ?? '';
+        for (let cx = 0; cx < line.length; cx++) {
+          const ch = line.charAt(cx);
+          if (ch !== ' ') grid.put(Math.floor(weedX) + cx, wy + cy, ch, weedColor, 1);
+        }
+      }
+    }
+    for (const d of dust) {
+      if (d.alive) grid.put(d.x, d.y, d.ch, sandShade, 0.6 * (1 - d.age / DUST_LIFE));
+    }
+    for (const c of cacti) drawCactus(grid, c);
   };
 
   return { step, draw };

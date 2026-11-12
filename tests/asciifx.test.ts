@@ -363,3 +363,44 @@ describe('snow sprites', () => {
     expect(splash).toBe(true);
   });
 });
+
+describe('desert sprites', () => {
+  const rows = DECOR.desert.rows;
+
+  it('is 9 rows tall', () => {
+    expect(rows).toBe(9);
+  });
+
+  it('with cols >= 60 a cactus trunk "| |" stands for >= 3 rows', () => {
+    for (const seed of [1, 2, 3]) {
+      const g = run(createDesert, 60, rows, seed, 1);
+      let best = 0;
+      for (let x = 0; x < 58; x++) {
+        let runLen = 0;
+        for (let y = 0; y < rows; y++) {
+          const trunk = g.chAt(x, y) === '|' && g.chAt(x + 1, y) === ' ' && g.chAt(x + 2, y) === '|';
+          runLen = trunk ? runLen + 1 : 0;
+          best = Math.max(best, runLen);
+        }
+      }
+      expect(best, `seed ${seed}`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('a tumbleweed rolls in within 12 s and moves right', () => {
+    const scene = createDesert(60, rows, 4);
+    const grid = new CharGrid(60, rows);
+    const xs: number[] = [];
+    for (let i = 0; i < 12 * 12; i++) {
+      scene.step(STEP);
+      grid.clear();
+      scene.draw(grid);
+      for (const l of grid.toLines()) {
+        const m = /[@%]\( {2}\)[@%]/.exec(l);
+        if (m && l.includes('@')) xs.push(m.index);
+      }
+    }
+    expect(xs.length).toBeGreaterThan(3);
+    expect(Math.max(...xs)).toBeGreaterThan(xs[0] ?? 0);
+  });
+});

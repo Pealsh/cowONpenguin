@@ -52,8 +52,10 @@ export const DECOR: Record<BiomeId, DecorConfig> = {
   },
   desert: {
     edge: 'bottom',
-    rows: 5,
+    rows: 9,
     palette: ['#b98a23', '#b8882e', '#b8863a', '#a67b3a', '#7d5a28'],
+    // サボテン (中緑 / 濃緑)
+    accents: ['#4a8a32', '#2f6624'],
     corner: {
       cols: 12,
       rows: 4,
