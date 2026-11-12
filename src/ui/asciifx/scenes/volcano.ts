@@ -199,7 +199,8 @@ export function createVolcano(
       // 輪郭の内側は不透明にして、後ろの火の粉を隠す
       for (let cy = 0; cy < CONE.h; cy++) {
         const line = CONE.lines[cy] ?? '';
-        const first = line.search(/\S/);
+        let first = 0;
+      while (first < line.length && line.charAt(first) === ' ') first++;
         for (let cx = Math.max(0, first + 1); cx < line.length - 1; cx++) grid.put(coneX + cx, coneY + cy, ' ', '', 0);
       }
       const flash = erupt >= 0 ? Math.floor(erupt * 12) % 2 === 0 : false;

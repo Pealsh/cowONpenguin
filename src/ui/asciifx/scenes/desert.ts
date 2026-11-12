@@ -137,7 +137,8 @@ export function createDesert(cols: number, rows: number, seed: number, palette =
     const top = footY - c.s.h + 1;
     for (let cy = 0; cy < c.s.h; cy++) {
       const line = c.s.lines[cy] ?? '';
-      const first = line.search(/\S/);
+      let first = 0;
+      while (first < line.length && line.charAt(first) === ' ') first++;
       let last = line.length - 1;
       while (last > 0 && line.charAt(last) === ' ') last--;
       for (let cx = Math.max(0, first); cx <= last; cx++) {
