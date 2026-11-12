@@ -320,3 +320,46 @@ describe('meadow sprite shapes', () => {
     expect(lines.slice(0, rows - 3).join('').trim().length).toBeGreaterThan(0);
   });
 });
+
+describe('snow sprites', () => {
+  const rows = DECOR.snow.rows;
+
+  it('is 10 rows tall', () => {
+    expect(rows).toBe(10);
+  });
+
+  it('after 6 s there is a multi-row icicle (V with \\ or # just above it)', () => {
+    const g = run(createSnow, 60, rows, 3, 6);
+    let found = false;
+    for (let y = 1; y < rows; y++) {
+      for (let x = 0; x < 60; x++) {
+        if (g.chAt(x, y) !== 'V') continue;
+        for (let dy = 1; dy <= 2; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const c = g.chAt(x + dx, y - dy);
+            if (c === '\\' || c === '#') found = true;
+          }
+        }
+      }
+    }
+    expect(found).toBe(true);
+  });
+
+  it('a drop falls to the bottom row and splashes', () => {
+    const scene = createSnow(60, rows, 3);
+    const grid = new CharGrid(60, rows);
+    let falling = false;
+    let splash = false;
+    for (let i = 0; i < 12 * 8 && !(falling && splash); i++) {
+      scene.step(STEP);
+      grid.clear();
+      scene.draw(grid);
+      const lines = grid.toLines();
+      if (lines.slice(4, rows - 1).some((l) => l.includes('o'))) falling = true;
+      const last = lines[rows - 1] ?? '';
+      if (/' \. '|\.   \./.test(last)) splash = true;
+    }
+    expect(falling).toBe(true);
+    expect(splash).toBe(true);
+  });
+});

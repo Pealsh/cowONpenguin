@@ -45,7 +45,7 @@ export const DECOR: Record<BiomeId, DecorConfig> = {
   },
   snow: {
     edge: 'top',
-    rows: 6,
+    rows: 10,
     palette: ['#4894f0', '#4693ea', '#4b92e4', '#5390dc', '#3b74c4', '#24549a'],
     // きらめき / 氷柱の青み / 雫
     accents: ['#1f8bff', '#2590dc', '#218ce7'],

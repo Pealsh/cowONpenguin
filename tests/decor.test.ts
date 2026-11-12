@@ -23,7 +23,7 @@ describe('DECOR config', () => {
       expect(DECOR[id].rows).toBeGreaterThanOrEqual(4);
       expect(DECOR[id].rows).toBeLessThanOrEqual(10);
     }
-    expect(DECOR.snow.rows).toBe(6);
+    expect(DECOR.snow.rows).toBe(10);
     expect(DECOR.volcano.rows).toBe(6);
     expect(DECOR.meadow.rows).toBe(8);
   });
