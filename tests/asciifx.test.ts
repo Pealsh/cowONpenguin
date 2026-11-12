@@ -200,3 +200,56 @@ describe('meadow specifics', () => {
     expect(changed).toBe(true);
   });
 });
+
+// ---- sprite helper ------------------------------------------------------
+import { sprite, stamp } from '../src/ui/asciifx/sprite';
+
+describe('sprite / stamp', () => {
+  it('sprite width is the longest line and height the line count', () => {
+    const s = sprite([' /\\', '/  \\', 'x']);
+    expect(s.w).toBe(4);
+    expect(s.h).toBe(3);
+    expect(s.lines).toEqual([' /\\', '/  \\', 'x']);
+  });
+
+  it('stamp skips spaces so the cell behind stays', () => {
+    const g = new CharGrid(4, 2);
+    g.put(1, 0, '#', '#111111', 1);
+    stamp(g, sprite(['a b', ' c ']), 0, 0, '#222222');
+    expect(g.toLines()).toEqual(['a#b ', ' c  ']);
+    expect(g.colorAt(1, 0)).toBe('#111111');
+    expect(g.colorAt(0, 0)).toBe('#222222');
+  });
+
+  it('stamp clips at all four edges without throwing', () => {
+    const g = new CharGrid(3, 3);
+    const s = sprite(['abc', 'def', 'ghi']);
+    expect(() => {
+      stamp(g, s, -2, 0, '#000000');
+      stamp(g, s, 2, 0, '#000000');
+      stamp(g, s, 0, -2, '#000000');
+      stamp(g, s, 0, 2, '#000000');
+      stamp(g, s, 99, 99, '#000000');
+      stamp(new CharGrid(0, 0), s, 0, 0, '#000000');
+    }).not.toThrow();
+    const g2 = new CharGrid(3, 3);
+    stamp(g2, s, -1, -1, '#000000');
+    expect(g2.toLines()).toEqual(['ef ', 'hi ', '   ']);
+    const g3 = new CharGrid(3, 3);
+    stamp(g3, s, 2, 2, '#000000');
+    expect(g3.toLines()).toEqual(['   ', '   ', '  a']);
+  });
+
+  it('colour callback receives the char and local coords, alpha applies', () => {
+    const g = new CharGrid(5, 3);
+    const seen: string[] = [];
+    stamp(g, sprite(['ab', ' c']), 2, 1, (ch, cx, cy) => {
+      seen.push(`${ch}${cx}${cy}`);
+      return ch === 'c' ? '#00ff00' : '#ff0000';
+    }, 0.5);
+    expect(seen).toEqual(['a00', 'b10', 'c11']);
+    expect(g.colorAt(3, 2)).toBe('#00ff00');
+    expect(g.colorAt(2, 1)).toBe('#ff0000');
+    expect(g.alphaAt(2, 1)).toBeCloseTo(0.5);
+  });
+});
